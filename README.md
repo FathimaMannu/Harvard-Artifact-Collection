@@ -110,7 +110,5 @@ time (built-in)
 
 ---
 
-## License
 
-MIT License
 
