@@ -230,12 +230,57 @@ QUERIES = {
 }
 
 # -------------------------
-# Streamlit App
+# Streamlit App - Full Code
 # -------------------------
 def main():
     set_bg_from_local()
-    st.markdown("<h1 style='text-align:center;'>🎨🏛️ Harvard's Artifacts Collection</h1>", unsafe_allow_html=True)
+    
+    # Title
+    st.markdown("""
+    <h1 style='
+        text-align:center;
+        font-size:48px;
+        font-weight:bold;
+        color:#FFFFFF;
+        text-shadow: 2px 2px 4px #000000;
+        margin-bottom:20px;
+    '>
+    🎨🏛️ Harvard's Artifacts Collection
+    </h1>
+    """, unsafe_allow_html=True)
 
+    # Subtitle
+    st.markdown("""
+    <h2 style='
+        text-align:center;
+        font-size:28px;
+        font-weight:600;
+        color:#FFFFFF;
+        text-shadow: 1px 1px 3px #000000;
+        margin-bottom:40px;
+    '>
+    Explore artifacts by classification, color, and more
+    </h2>
+    """, unsafe_allow_html=True)
+
+    # Buttons CSS
+    st.markdown("""
+    <style>
+    div.stButton > button {
+        font-size:18px;
+        font-weight:bold;
+        background-color:#4CAF50;
+        color:white;
+        padding:10px 20px;
+        border-radius:8px;
+    }
+    div.stButton > button:hover {
+        background-color:#45a049;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Classification selectbox
     classifications = get_all_classifications()
     classification = st.selectbox(
         "Select a classification:",
@@ -246,6 +291,7 @@ def main():
 
     col1, col2, col3, col4 = st.columns([1,1,1,1], gap="large")
 
+    # Collect Data
     with col1:
         if st.button("Collect Data", use_container_width=True):
             records = fetch_objects(DEFAULT_API_KEY, classification)
@@ -261,12 +307,14 @@ def main():
             else:
                 st.warning("No records found.")
 
+    # Migrate to SQL
     with col2:
         if st.button("Migrate to SQL", use_container_width=True):
             if "records" in st.session_state:
                 st.session_state["migrate_ready"] = True
                 st.info("Click 'Insert Data' to push collected records into DB.")
 
+    # Insert Data
     with col3:
         if st.session_state.get("migrate_ready"):
             if st.button("Insert Data", use_container_width=True):
@@ -275,7 +323,7 @@ def main():
                 meta, media, colors = transform_records(st.session_state["records"])
                 cur = conn.cursor()
 
-                # ✅ Safe insert (no duplicate errors)
+                # Safe insert
                 for _, row in meta.drop_duplicates(subset=["id"]).iterrows():
                     cur.execute("""INSERT OR REPLACE INTO artifact_metadata 
                                    (id, title, culture, period, century, medium, dimensions,
@@ -296,13 +344,14 @@ def main():
                                 tuple(row))
 
                 conn.commit()
-                st.success("✅ Data inserted into DB Sucessfully")
+                st.success("✅ Data inserted into DB Successfully")
 
-                # Preview inserted rows from DB
+                # Preview
                 st.subheader("📑 Recently Inserted Data (Preview)")
                 preview_df = pd.read_sql_query("SELECT * FROM artifact_metadata ORDER BY id DESC LIMIT 10;", conn)
                 st.dataframe(preview_df, use_container_width=True)
 
+    # SQL Queries
     with col4:
         if st.button("SQL Queries", use_container_width=True):
             st.session_state["sql_queries"] = not st.session_state.get("sql_queries", False)
@@ -314,8 +363,6 @@ def main():
             conn = get_conn()
             df = pd.read_sql_query(QUERIES[query_name], conn)
             st.dataframe(df, use_container_width=True)
-
-            # ✅ Charts for all queries
             numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns
             if len(numeric_cols) > 0:
                 st.subheader("📈 Chart View")
@@ -335,5 +382,8 @@ def main():
                 except Exception as e:
                     st.error(f"Error: {e}")
 
+# -------------------------
+# Run App
+# -------------------------
 if __name__ == "__main__":
     main()
